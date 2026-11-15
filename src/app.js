@@ -20,6 +20,13 @@ app.use(express.json({ limit: '1mb', strict: true }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
 app.get('/api/health', (req, res) => res.status(mongoose.connection.readyState === 1 ? 200 : 503).json({ success: mongoose.connection.readyState === 1, data: { status: mongoose.connection.readyState === 1 ? 'ok' : 'database_unavailable', database: mongoose.connection.readyState } }));
+app.use((req, res, next) => {
+  if (mongoose.connection.readyState === 1) return next();
+  return res.status(503).json({
+    success: false,
+    error: { message: 'Database unavailable. Check the backend MongoDB connection.', requestId: req.id },
+  });
+});
 app.use('/api/v1/auth', require('./routes/authRoutes'));
 app.use('/api/v1/roles', require('./routes/roleRoutes'));
 app.use('/api/v1/members', require('./routes/memberRoutes'));
