@@ -11,8 +11,6 @@ function loadEnv() {
 }
 loadEnv();
 const app = require('./app');
-const connectDatabase = require('./config/db');
-const bootstrap = require('./services/bootstrapService');
 const port = Number(process.env.PORT) || 5000;
 
 async function start() {
@@ -20,8 +18,7 @@ async function start() {
     const length = (process.env.JWT_SECRET || '').length;
     throw new Error(`JWT_SECRET is required (loaded Backend/.env; current value length: ${length}). Set it in Backend/.env or the process environment.`);
   }
-  await connectDatabase();
-  await bootstrap();
+  await app.locals.initializeDatabase();
   const server = app.listen(port, () => console.log(`Sangam API listening on port ${port}`));
   const shutdown = (signal) => {
     console.log(`${signal} received; closing server`);

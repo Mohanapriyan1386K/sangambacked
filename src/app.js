@@ -2,8 +2,23 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('node:crypto');
 const mongoose = require('mongoose');
+const connectDatabase = require('./config/db');
+const bootstrap = require('./services/bootstrapService');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 const app = express();
+let bootstrapPromise;
+
+async function initializeDatabase() {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required in the backend deployment environment');
+  await connectDatabase();
+  if (!bootstrapPromise) {
+    bootstrapPromise = bootstrap().catch((error) => {
+      bootstrapPromise = undefined;
+      throw error;
+    });
+  }
+  await bootstrapPromise;
+}
 
 app.disable('x-powered-by');
 app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
@@ -19,13 +34,27 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '1mb', strict: true }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
-app.get('/api/health', (req, res) => res.status(mongoose.connection.readyState === 1 ? 200 : 503).json({ success: mongoose.connection.readyState === 1, data: { status: mongoose.connection.readyState === 1 ? 'ok' : 'database_unavailable', database: mongoose.connection.readyState } }));
-app.use((req, res, next) => {
-  if (mongoose.connection.readyState === 1) return next();
-  return res.status(503).json({
-    success: false,
-    error: { message: 'Database unavailable. Check the backend MongoDB connection.', requestId: req.id },
-  });
+app.locals.initializeDatabase = initializeDatabase;
+app.get('/api/health', async (req, res) => {
+  try {
+    await connectDatabase();
+    return res.status(200).json({ success: true, data: { status: 'ok', database: mongoose.connection.readyState } });
+  } catch (error) {
+    console.error('Database health check failed:', { name: error.name, code: error.code, message: error.message });
+    return res.status(503).json({ success: false, data: { status: 'database_unavailable', database: mongoose.connection.readyState } });
+  }
+});
+app.use(async (req, res, next) => {
+  try {
+    await initializeDatabase();
+    next();
+  } catch (error) {
+    console.error('Database initialization failed:', { name: error.name, code: error.code, message: error.message });
+    res.status(503).json({
+      success: false,
+      error: { message: 'Database unavailable. Check the backend MongoDB connection and deployment logs.', requestId: req.id },
+    });
+  }
 });
 app.use('/api/v1/auth', require('./routes/authRoutes'));
 app.use('/api/v1/roles', require('./routes/roleRoutes'));
