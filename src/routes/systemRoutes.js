@@ -1,0 +1,12 @@
+const router = require('express').Router();
+const c = require('../controllers/systemController');
+const wrap = require('../utils/asyncHandler');
+const { authenticate, authorize } = require('../middleware/auth');
+const imageUpload = require('../middleware/imageUpload');
+router.use(authenticate);
+router.get('/settings', authorize('settings:view'), wrap(c.settings));
+router.patch('/settings', authorize('settings:edit'), wrap(c.updateSettings));
+router.get('/audit-logs', authorize('audit:view'), wrap(c.auditLogs));
+router.get('/reports/expenses', authorize('reports:view'), wrap(c.expenseReport));
+router.post('/uploads', authorize('media:create'), imageUpload, wrap(c.uploads));
+module.exports = router;

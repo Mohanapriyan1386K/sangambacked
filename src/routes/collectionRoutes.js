@@ -1,0 +1,15 @@
+const router = require('express').Router();
+const c = require('../controllers/paymentController');
+const wrap = require('../utils/asyncHandler');
+const { authenticate, authorize } = require('../middleware/auth');
+const { validateId, validateBody } = require('../middleware/validate');
+router.use(authenticate);
+router.get('/dues', authorize('collections:view'), wrap(c.dues));
+router.get('/payments', authorize('collections:view'), wrap(c.list));
+router.post('/payments', authorize('collections:create'), validateBody(['memberId', 'dueId', 'dueMonth', 'amount']), wrap(c.create));
+router.get('/payments/:id', authorize('collections:view'), validateId, wrap(c.receipt));
+router.post('/payments/:id/void', authorize('collections:edit'), validateId, validateBody(['reason']), wrap(c.voidPayment));
+router.get('/reports/collections/export', authorize('reports:export'), wrap(c.exportReport));
+router.get('/reports/collections', authorize('reports:view'), wrap(c.report));
+router.get('/dashboard', authorize('dashboard:view'), wrap(c.dashboard));
+module.exports = router;

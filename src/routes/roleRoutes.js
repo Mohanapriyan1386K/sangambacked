@@ -1,0 +1,11 @@
+const router = require('express').Router();
+const c = require('../controllers/roleController');
+const wrap = require('../utils/asyncHandler');
+const { authenticate, authorize } = require('../middleware/auth');
+const { validateId, validateBody } = require('../middleware/validate');
+router.use(authenticate);
+router.get('/', authorize('roles:view'), wrap(c.list));
+router.post('/', authorize('roles:create'), validateBody(['name']), wrap(c.create));
+router.patch('/:id', authorize('roles:edit'), validateId, wrap(c.update));
+router.delete('/:id', authorize('roles:delete'), validateId, wrap(c.remove));
+module.exports = router;

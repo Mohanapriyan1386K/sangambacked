@@ -1,0 +1,16 @@
+const router = require('express').Router();
+const c = require('../controllers/memberController');
+const wrap = require('../utils/asyncHandler');
+const { authenticate, authorize } = require('../middleware/auth');
+const { validateId, validateBody } = require('../middleware/validate');
+router.use(authenticate);
+router.get('/', authorize('members:view'), wrap(c.list));
+router.post('/', authorize('members:create'), validateBody(['name', 'monthlyFee']), wrap(c.create));
+router.post('/batch', authorize('members:create'), validateBody(['members']), wrap(c.batch));
+router.post('/dues/generate', authorize('collections:create'), validateBody(['month']), wrap(c.generateDues));
+router.get('/:id', authorize('members:view'), validateId, wrap(c.get));
+router.patch('/:id', authorize('members:edit'), validateId, wrap(c.update));
+router.post('/:id/deactivate', authorize('members:edit'), validateId, wrap(c.deactivate));
+router.get('/:id/dues', authorize('collections:view'), validateId, wrap(c.dues));
+router.get('/:id/calendar', authorize('reports:view'), validateId, wrap(c.calendar));
+module.exports = router;
